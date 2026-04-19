@@ -74,7 +74,7 @@ GameObject:
   - component: {fileID: 4000010333467420}
   - component: {fileID: 20000011079689172}
   - component: {fileID: 114499647714453706}
-  - component: {fileID: 2954812199939338326}
+  - component: {fileID: 8222483940560640204}
   m_Layer: 0
   m_Name: Camera (eye)
   m_TagString: MainCamera
@@ -160,7 +160,7 @@ MonoBehaviour:
   m_Script: {fileID: -1203896901, guid: c8c3f993362a2834b83b9a6a9d2732e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &2954812199939338326
+--- !u!114 &8222483940560640204
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
