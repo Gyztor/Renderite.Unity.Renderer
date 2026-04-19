@@ -1,0 +1,17 @@
+﻿<Solution>
+  <Project Path="Oculus.VR.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Unity.Postprocessing.Runtime.csproj" />
+  <Project Path="Oculus.Platform.csproj" />
+  <Project Path="SteamVR.csproj" />
+  <Project Path="SteamVR_Input_Editor.csproj" />
+  <Project Path="UMP.csproj" />
+  <Project Path="Oculus.VR.Editor.csproj" />
+  <Project Path="Unity.Postprocessing.Editor.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="SteamVR_Editor.csproj" />
+  <Project Path="Oculus.Platform.Editor.csproj" />
+  <Project Path="SteamVR_Actions.csproj" />
+  <Project Path="Oculus.VR.Scripts.Editor.csproj" />
+  <Project Path="SteamVR_Windows_EditorHelper.csproj" />
+</Solution>

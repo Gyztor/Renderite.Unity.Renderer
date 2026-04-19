@@ -832,26 +832,28 @@ public class OVRLint : EditorWindow
 	}
 
 	static void SetAudioPreload(AudioClip clip, bool preload, bool refreshImmediately)
-	{
-		if (clip != null)
-		{
-			string assetPath = AssetDatabase.GetAssetPath(clip);
-			AudioImporter importer = AssetImporter.GetAtPath(assetPath) as AudioImporter;
-			if (importer != null)
-			{
-				if (preload != importer.preloadAudioData)
-				{
-					importer.preloadAudioData = preload;
+    {
+        if (clip != null)
+        {
+            string assetPath = AssetDatabase.GetAssetPath(clip);
+            AudioImporter importer = AssetImporter.GetAtPath(assetPath) as AudioImporter;
+            if (importer != null)
+            {
+                if (preload != importer.defaultSampleSettings.preloadAudioData)
+                {
+                    AudioImporterSampleSettings settings = importer.defaultSampleSettings;
+                    settings.preloadAudioData = preload;
+                    importer.defaultSampleSettings = settings;
 
-					AssetDatabase.ImportAsset(assetPath);
-					if (refreshImmediately)
-					{
-						AssetDatabase.Refresh();
-					}
-				}
-			}
-		}
-	}
+                    AssetDatabase.ImportAsset(assetPath);
+                    if (refreshImmediately)
+                    {
+                        AssetDatabase.Refresh();
+                    }
+                }
+            }
+        }
+    }
 
 	static void SetAudioLoadType(AudioClip clip, AudioClipLoadType loadType, bool refreshImmediately)
 	{
