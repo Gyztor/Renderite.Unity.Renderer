@@ -122,16 +122,17 @@ namespace UnityEngine.Rendering.PostProcessing
         [SerializeField]
         PostProcessResources m_Resources;
 
+        // Some juggling needed to track down reference to the resource asset when loaded from asset
+        // bundle (guid conflict)
+        [NonSerialized]
+        PostProcessResources m_OldResources;
+
         // UI states
-#if UNITY_2017_1_OR_NEWER
         [UnityEngine.Scripting.Preserve]
-#endif
         [SerializeField]
         bool m_ShowToolkit;
 
-#if UNITY_2017_1_OR_NEWER
         [UnityEngine.Scripting.Preserve]
-#endif
         [SerializeField]
         bool m_ShowCustomSorter;
 
@@ -246,7 +247,7 @@ namespace UnityEngine.Rendering.PostProcessing
         [ImageEffectUsesCommandBuffer]
         void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
-            if (finalBlitToCameraTarget)
+            if (finalBlitToCameraTarget && !m_CurrentContext.stereoActive)
                 RenderTexture.active = dst; // silence warning
             else
                 Graphics.Blit(src, dst);
@@ -421,14 +422,28 @@ namespace UnityEngine.Rendering.PostProcessing
             if (!m_Camera.usePhysicalProperties)
 #endif
                 m_Camera.ResetProjectionMatrix();
-            m_Camera.nonJitteredProjectionMatrix = m_Camera.projectionMatrix;
+                m_Camera.nonJitteredProjectionMatrix = m_Camera.projectionMatrix;
 
 #if ENABLE_VR
             if (m_Camera.stereoEnabled)
-            {
-                m_Camera.ResetStereoProjectionMatrices();
-                Shader.SetGlobalFloat(ShaderIDs.RenderViewportScaleFactor, XRSettings.renderViewportScale);
-            }
+                    {
+                        m_Camera.ResetStereoProjectionMatrices();
+                        if (m_Camera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Right)
+                        {
+                            m_Camera.CopyStereoDeviceProjectionMatrixToNonJittered(Camera.StereoscopicEye.Right);
+                            m_Camera.projectionMatrix = m_Camera.GetStereoNonJitteredProjectionMatrix(Camera.StereoscopicEye.Right);
+                            m_Camera.nonJitteredProjectionMatrix = m_Camera.projectionMatrix;
+                            m_Camera.SetStereoProjectionMatrix(Camera.StereoscopicEye.Right, m_Camera.GetStereoProjectionMatrix(Camera.StereoscopicEye.Right));
+                        }
+                        else if (m_Camera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Left || m_Camera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Mono)
+                        {
+                            m_Camera.CopyStereoDeviceProjectionMatrixToNonJittered(Camera.StereoscopicEye.Left); // device to unjittered
+                            m_Camera.projectionMatrix = m_Camera.GetStereoNonJitteredProjectionMatrix(Camera.StereoscopicEye.Left);
+                            m_Camera.nonJitteredProjectionMatrix = m_Camera.projectionMatrix;
+                            m_Camera.SetStereoProjectionMatrix(Camera.StereoscopicEye.Left, m_Camera.GetStereoProjectionMatrix(Camera.StereoscopicEye.Left));
+                        }
+                        Shader.SetGlobalFloat(ShaderIDs.RenderViewportScaleFactor, XRSettings.renderViewportScale);
+                    }
             else
 #endif
             {
@@ -451,6 +466,10 @@ namespace UnityEngine.Rendering.PostProcessing
 
         static bool RequiresInitialBlit(Camera camera, PostProcessRenderContext context)
         {
+            // [ImageEffectUsesCommandBuffer] is currently broken, FIXME
+            return true;
+
+            /*
 #if UNITY_2019_1_OR_NEWER
             if (camera.allowMSAA) // this shouldn't be necessary, but until re-tested on older Unity versions just do the blits
                 return true;
@@ -461,6 +480,7 @@ namespace UnityEngine.Rendering.PostProcessing
 #else
             return true;
 #endif
+            */
         }
 
         void UpdateSrcDstForOpaqueOnly(ref int src, ref int dst, PostProcessRenderContext context, RenderTargetIdentifier cameraTarget, int opaqueOnlyEffectsRemaining)
@@ -521,6 +541,11 @@ namespace UnityEngine.Rendering.PostProcessing
             var ssrSettings = ssrBundle.settings;
             var ssrRenderer = ssrBundle.renderer;
             bool isScreenSpaceReflectionsActive = ssrSettings.IsEnabledAndSupported(context);
+
+            #if UNITY_2019_1_OR_NEWER
+            if (context.stereoActive)
+                context.UpdateSinglePassStereoState(context.IsTemporalAntialiasingActive(), aoSupported, isScreenSpaceReflectionsActive);
+#endif
 
             // Ambient-only AO is a special case and has to be done in separate command buffers
             if (isAmbientOcclusionDeferred)
@@ -591,7 +616,8 @@ namespace UnityEngine.Rendering.PostProcessing
             // Post-transparency stack
             int tempRt = -1;
             bool forceNanKillPass = (!m_NaNKilled && stopNaNPropagation && RuntimeUtilities.isFloatingPointFormat(sourceFormat));
-            if (RequiresInitialBlit(m_Camera, context) || forceNanKillPass)
+            bool vrSinglePassInstancingEnabled = context.stereoActive && context.numberOfEyes > 1 && context.stereoRenderingMode == PostProcessRenderContext.StereoRenderingMode.SinglePassInstanced;
+            if (!vrSinglePassInstancingEnabled && (RequiresInitialBlit(m_Camera, context) || forceNanKillPass))
             {
                 tempRt = m_TargetPool.Get();
                 context.GetScreenSpaceTemporaryRT(m_LegacyCmdBuffer, tempRt, 0, sourceFormat, RenderTextureReadWrite.sRGB, FilterMode.Point);
@@ -609,7 +635,7 @@ namespace UnityEngine.Rendering.PostProcessing
             context.destination = cameraTarget;
 
 #if UNITY_2019_1_OR_NEWER
-            if (finalBlitToCameraTarget && !RuntimeUtilities.scriptableRenderPipelineActive)
+            if (finalBlitToCameraTarget && !m_CurrentContext.stereoActive && !RuntimeUtilities.scriptableRenderPipelineActive)
             {
                 if (m_Camera.targetTexture)
                 {
@@ -651,6 +677,8 @@ namespace UnityEngine.Rendering.PostProcessing
                 {
                     if (RuntimeUtilities.isSinglePassStereoEnabled || m_Camera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Right)
                         m_Camera.ResetStereoProjectionMatrices();
+                        if (XRSettings.stereoRenderingMode == XRSettings.StereoRenderingMode.MultiPass)
+                                m_Camera.projectionMatrix = m_Camera.GetStereoProjectionMatrix(Camera.StereoscopicEye.Left);
                 }
             }
         }
@@ -800,7 +828,16 @@ namespace UnityEngine.Rendering.PostProcessing
 
         void SetupContext(PostProcessRenderContext context)
         {
-            RuntimeUtilities.UpdateResources(m_Resources);
+            // Juggling required when a scene with post processing is loaded from an asset bundle
+            // See #1148230
+            // Additional !RuntimeUtilities.isValidResources() to fix #1262826
+            // The static member s_Resources is unset by addressable. The code is ill formed as it
+            // is not made to handle multiple scene.
+            if (m_OldResources != m_Resources || !RuntimeUtilities.isValidResources())
+            {
+                RuntimeUtilities.UpdateResources(m_Resources);
+                m_OldResources = m_Resources;
+            }
 
             m_IsRenderingInSceneView = context.camera.cameraType == CameraType.SceneView;
             context.isSceneView = m_IsRenderingInSceneView;
@@ -1157,7 +1194,9 @@ namespace UnityEngine.Rendering.PostProcessing
                 m_LogHistogram.Generate(context);
 
             // Uber effects
+
             RenderEffect<AutoExposure>(context);
+
             uberSheet.properties.SetTexture(ShaderIDs.AutoExposureTex, context.autoExposureTexture);
 
             RenderEffect<LensDistortion>(context);

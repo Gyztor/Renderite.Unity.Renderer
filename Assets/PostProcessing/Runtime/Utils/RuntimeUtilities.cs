@@ -10,6 +10,10 @@ using UnityEngine.Assertions;
 using UnityEditor;
 #endif
 
+#if UNITY_6000_5_OR_NEWER
+using UnityEngine.Assemblies;
+#endif
+
 namespace UnityEngine.Rendering.PostProcessing
 {
     using SceneManagement;
@@ -379,6 +383,10 @@ namespace UnityEngine.Rendering.PostProcessing
 
                 return s_CopyFromTexArraySheet;
             }
+        }
+        internal static bool isValidResources()
+        {
+            return s_Resources != null;
         }
 
         internal static void UpdateResources(PostProcessResources resources)
@@ -798,14 +806,12 @@ namespace UnityEngine.Rendering.PostProcessing
         {
             get
             {
-#if UNITY_EDITOR
-                return UnityEditor.PlayerSettings.virtualRealitySupported;
+#if ENABLE_VR && UNITY_EDITOR && !UNITY_2020_1_OR_NEWER
+                return UnityEditorInternal.VR.VREditor.GetVREnabledOnTargetGroup(BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget));
 #elif UNITY_XBOXONE || !ENABLE_VR
                 return false;
-#elif UNITY_2017_2_OR_NEWER
+#else
                 return UnityEngine.XR.XRSettings.enabled;
-#elif UNITY_5_6_OR_NEWER
-                return UnityEngine.VR.VRSettings.enabled;
 #endif
             }
         }

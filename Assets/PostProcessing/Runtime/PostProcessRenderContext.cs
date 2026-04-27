@@ -31,57 +31,32 @@ namespace UnityEngine.Rendering.PostProcessing
 #if !UNITY_SWITCH && ENABLE_VR
                 if (m_Camera.stereoEnabled)
                 {
-#if UNITY_2017_2_OR_NEWER
                     var xrDesc = XRSettings.eyeTextureDesc;
                     stereoRenderingMode = StereoRenderingMode.SinglePass;
+                    numberOfEyes = 1;
 
-#if UNITY_STANDALONE || UNITY_EDITOR
+#if UNITY_2018_3_OR_NEWER
+                    if (XRSettings.stereoRenderingMode == XRSettings.StereoRenderingMode.MultiPass)
+                        stereoRenderingMode = StereoRenderingMode.MultiPass;
+#endif
+
+#if UNITY_STANDALONE || UNITY_EDITOR || UNITY_PS4 || UNITY_PS5
                     if (xrDesc.dimension == TextureDimension.Tex2DArray)
                         stereoRenderingMode = StereoRenderingMode.SinglePassInstanced;
 #endif
                     if (stereoRenderingMode == StereoRenderingMode.SinglePassInstanced)
                         numberOfEyes = 2;
 
-#if UNITY_2019_1_OR_NEWER
-                    if (stereoRenderingMode == StereoRenderingMode.SinglePass)
-                    {
-                        numberOfEyes = 2;
-                        //xrDesc.width /= 2;
-                        xrDesc.vrUsage = VRTextureUsage.None;
-                    }
-#else
-                    //before 2019.1 double-wide still issues two drawcalls
-                    if (stereoRenderingMode == StereoRenderingMode.SinglePass)
-                    {
-                        numberOfEyes = 1;
-                    }
-#endif
-
                     width = xrDesc.width;
                     height = xrDesc.height;
                     m_sourceDescriptor = xrDesc;
-#else
-                    // Single-pass is only supported with 2017.2+ because
-                    // that is when XRSettings.eyeTextureDesc is available.
-                    // Without it, we don't have a robust method of determining
-                    // if we are in single-pass.  Users can just double the width
-                    // here if they KNOW they are using single-pass.
-                    width = XRSettings.eyeTextureWidth;
-                    height = XRSettings.eyeTextureHeight;
-#endif
 
                     if (m_Camera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Right)
                         xrActiveEye = (int)Camera.StereoscopicEye.Right;
 
                     screenWidth = XRSettings.eyeTextureWidth;
                     screenHeight = XRSettings.eyeTextureHeight;
-
-#if UNITY_2019_1_OR_NEWER
-                    if (stereoRenderingMode == StereoRenderingMode.SinglePass)
-                        screenWidth /= 2;
-#endif
                     stereoActive = true;
-
                 }
                 else
 #endif
@@ -425,6 +400,43 @@ namespace UnityEngine.Rendering.PostProcessing
                 actualHeight = heightOverride;
 
             return RenderTexture.GetTemporary(actualWidth, actualHeight, depthBufferBits, colorFormat, readWrite);
+#endif
+        }
+        /// <summary>
+        /// Update current single-pass stereo state for TAA, AO, etc.
+        /// </summary>
+        /// <param name="isTAAEnabled">The enabled state of Temporal Anti-aliasing</param>
+        /// <param name="isAOEnabled">The enabled state of Ambient Occlusion</param>
+        /// <param name="isSSREnabled">The enabled state of Screen-space Reflections</param>
+        public void UpdateSinglePassStereoState(bool isTAAEnabled, bool isAOEnabled, bool isSSREnabled)
+        {
+#if UNITY_2019_1_OR_NEWER && ENABLE_VR
+            var xrDesc = XRSettings.eyeTextureDesc;
+            screenWidth = XRSettings.eyeTextureWidth;
+
+            if (stereoRenderingMode == StereoRenderingMode.SinglePass)
+            {
+                //For complex effects, it's more efficient to disable XR single-pass interface
+                if (isTAAEnabled || isAOEnabled || isSSREnabled)
+                {
+                    numberOfEyes = 1;
+                }
+                else
+                {
+                    //Use XR-interface method:
+                    //We take care of providing stereoized camera render texture to postprocessing framework and rendering out the final postprocessed results to the each of the eye textures
+                    // https://docs.google.com/document/d/1hANbhKCRIJs6ww7XoAIXbX3ArdAs7OBOTfZL1MqgtPI
+
+                    numberOfEyes = 2;
+                    xrDesc.width /= 2;
+                    xrDesc.vrUsage = VRTextureUsage.None;
+                    screenWidth /= 2;
+                }
+
+                width = xrDesc.width;
+                height = xrDesc.height;
+                m_sourceDescriptor = xrDesc;
+            }
 #endif
         }
     }
