@@ -88,8 +88,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DebugFramePacing: 0
-  EditorQueueName: jDQTnQX5CLFraTWA_UbxQsg3eBLHIchJUyTiaV82dpnmED7xbHWFz3ZeOAtw=
-  EditorQueueCapacity: 8388608
+  EditorQueueName: 
+  EditorQueueCapacity: 0
   Progress: {fileID: 1251938798}
   OverlayCamera: {fileID: 1031110216}
   CameraInitializer: {fileID: 9}
