@@ -56,10 +56,7 @@ public class MouseDriver : MouseInput
         state.directDelta = blockMovement ? default : currentMouse.delta.ReadValue().ToRender();
 
         var scroll = currentMouse.scroll.ReadValue();
-
-#if UNITY_STANDALONE_LINUX
         scroll *= 100;
-#endif
 
         state.scrollWheelDelta = scroll.ToRender();
 
