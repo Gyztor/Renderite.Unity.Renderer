@@ -52,5 +52,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Renderite.Unity.Renderer.slnx"
+    "dotnet.defaultSolution": "Renderite.Unity.Renderer-IL2CPP.slnx"
 }
