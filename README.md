@@ -1,6 +1,6 @@
 ~~Gonna be real, VR is brokie. i am mainly just poking around at the renderer to see if i could make it work. technically vr boots and does everything, it just has a weird eye flip issue due to post processing.~~
 
-VR now works! though hands dont seem to be tracking atm, otherwise should work well. Possible linux issues atm too.
+VR now works! though hands dont seem to be tracking atm, otherwise should work well. Works on linux too!
 
 # What is this?
 This repository contains the Unity renderer for Resonite. Resonite is a free social VR sandbox platform, which allows for socialization and collaborative in-game building.
